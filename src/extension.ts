@@ -10,6 +10,8 @@ import { TestViewDragAndDrop } from './testViewDragAndDrop';
 import { TestView } from './testView';
 
 let g_selection = 0;
+let foundTab = false;
+let testEditor: vscode.TextEditor | undefined;
 
 export function activate(context: vscode.ExtensionContext) {
 	const rootPath = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
@@ -41,17 +43,13 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 	vscode.commands.registerCommand('extension.openJsonSelection', range => jsonOutlineProvider.select(range));
 	vscode.commands.registerCommand('testView.testRevealRange', () => {
-		// * Test 'Reveal Range' *
-		//
+
 		console.log('Testing Reveal Range in first opened visible tab/text editor, characters 5 to 10 of the first line.');
-		// Grab first visible tab
-
-		let foundTab = false;
-
+		foundTab = false;
+		testEditor = undefined;
 		// Loop over tabs, find one who's uri is a file uri. make sure it's document and text-editor is shown
+		// Set a range on either line 0 or 1 (alternates at each call) after a second, and reveals it a after another second.
 		// Making sure to preserve focus on original panel in side bar.
-		let testEditor: vscode.TextEditor | undefined;
-
 		vscode.window.tabGroups.all.forEach((p_tabGroup) => {
 			p_tabGroup.tabs.forEach((p_tab) => {
 
@@ -114,7 +112,7 @@ export function activate(context: vscode.ExtensionContext) {
 				}
 			});
 		});
-		if (!foundTab || testEditor === undefined) {
+		if (!foundTab) {
 			vscode.window.showInformationMessage("No opened texts to test reveal! Open something with some text first!");
 		}
 
