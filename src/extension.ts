@@ -9,6 +9,8 @@ import { FileExplorer } from './fileExplorer';
 import { TestViewDragAndDrop } from './testViewDragAndDrop';
 import { TestView } from './testView';
 
+let g_selection = 0;
+
 export function activate(context: vscode.ExtensionContext) {
 	const rootPath = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
 		? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined;
@@ -42,6 +44,80 @@ export function activate(context: vscode.ExtensionContext) {
 		// * Test 'Reveal Range' *
 		//
 		console.log('Testing Reveal Range in first opened visible tab/text editor, characters 5 to 10 of the first line.');
+		// Grab first visible tab
+
+		let foundTab = false;
+
+		// Loop over tabs, find one who's uri is a file uri. make sure it's document and text-editor is shown
+		// Making sure to preserve focus on original panel in side bar.
+		let testEditor: vscode.TextEditor | undefined;
+
+		vscode.window.tabGroups.all.forEach((p_tabGroup) => {
+			p_tabGroup.tabs.forEach((p_tab) => {
+
+				if (p_tab.input &&
+					(p_tab.input as vscode.TabInputText).uri &&
+					(p_tab.input as vscode.TabInputText).uri.scheme === "file") {
+					vscode.workspace.textDocuments.forEach((p_textDocument) => {
+						if (!foundTab) {
+							foundTab = true;
+							console.log('#1 Found a tab for a text file.');
+							const uriToShow = (p_tab.input as vscode.TabInputText).uri;
+
+							vscode.workspace.openTextDocument(uriToShow)
+								.then((p_document) => {
+									console.log('#2 Got the opened document of the tab.');
+
+									return vscode.window.showTextDocument(
+										p_document,
+										{
+											preserveFocus: true,
+											preview: true
+										}
+									);
+								})
+								.then((p_editor) => {
+									testEditor = p_editor;
+
+									if (g_selection) {
+										g_selection = 0;
+									} else {
+										g_selection = 1;
+									}
+									// Wait a second
+									setTimeout(() => {
+										console.log('#3 Set selection by setting the "selection" property of testEditor');
+										const w_selection = new vscode.Selection(g_selection, 4, g_selection, 9);
+										if (testEditor) {
+											testEditor.selection = w_selection;
+										}
+									}, 1000);
+									// Wait another second
+									setTimeout(() => {
+										console.log('#4 Made sure the text editor under the tab of that document is shown');
+										const w_scrollRange = new vscode.Range(g_selection, 4, g_selection, 9);
+										if (testEditor) {
+											if (testEditor.document.getText().length === 0) {
+												vscode.window.showInformationMessage("Opened text editor has no content to reveal! type something more than 10 characters long!");
+											} else {
+												console.log('#5 Trying to reveal range while preserving focus!');
+
+												testEditor.revealRange(w_scrollRange, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+											}
+										}
+									}, 2000);
+								});
+
+						}
+
+					});
+				}
+			});
+		});
+		if (!foundTab || testEditor === undefined) {
+			vscode.window.showInformationMessage("No opened texts to test reveal! Open something with some text first!");
+		}
+
 
 	});
 
